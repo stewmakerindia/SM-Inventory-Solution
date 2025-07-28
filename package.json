@@ -4,8 +4,9 @@
   "description": "A simple inventory management app for cloud kitchens.",
   "main": "main.js",
   "scripts": {
-    "start": "vite"
-  },
+  "start": "vite",
+  "vercel-build": "vite build"
+},
   "author": "",
   "license": "ISC",
   "dependencies": {
