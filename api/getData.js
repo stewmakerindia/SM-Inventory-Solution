@@ -15,7 +15,7 @@ export default async function handler(req, res) {
         const SPREADSHEET_ID = process.env.VITE_GOOGLE_SHEET_ID;
 
         // Fetch all data in parallel for speed
-        const [itemsRes, dishesRes, productionPlanRes] = await Promise.all([
+        const [itemsRes, dishesRes, productionPlanRes, categoryOrderRes] = await Promise.all([
             sheets.spreadsheets.values.get({
                 spreadsheetId: SPREADSHEET_ID,
                 range: 'Master_Items!A2:C', // Start from row 2 to skip header
@@ -27,6 +27,11 @@ export default async function handler(req, res) {
             sheets.spreadsheets.values.get({
                 spreadsheetId: SPREADSHEET_ID,
                 range: 'Production_Plans!A:E',
+            }),
+            // *** NEW: Fetching the category order ***
+            sheets.spreadsheets.values.get({
+                spreadsheetId: SPREADSHEET_ID,
+                range: 'Category_Order!A2:A',
             }),
         ]);
         
@@ -53,11 +58,15 @@ export default async function handler(req, res) {
             return obj;
         });
 
+        // *** NEW: Process the category order ***
+        const categoryOrder = categoryOrderRes.data.values ? categoryOrderRes.data.values.flat() : [];
+
 
         res.status(200).json({
             items,
             dishes,
             productionPlan,
+            categoryOrder, // *** NEW: Sending the order to the app ***
         });
 
     } catch (error) {
