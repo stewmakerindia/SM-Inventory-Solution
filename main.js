@@ -1,35 +1,48 @@
+// This is the real, live code for your app.
+
 // --- CONFIGURATION ---
-// These are the names of your outlets.
 const OUTLETS = ["Yelahanka", "Thanisandra", "Kammanahalli", "Indiranagar"];
+const SPREADSHEET_ID = import.meta.env.VITE_GOOGLE_SHEET_ID;
+
 // The main container for our app
 const appContainer = document.getElementById("app");
 
-// --- MOCK DATA (for testing before connecting to Google Sheets) ---
-// This data will be replaced by live data from your Google Sheet later.
-const MOCK_ITEMS = [
-    { ItemName: "Onion", Category: "Vegetables", Unit: "kg" },
-    { ItemName: "Tomato", Category: "Vegetables", Unit: "kg" },
-    { ItemName: "Chicken, Boneless", Category: "Meat", Unit: "kg" },
-    { ItemName: "500ml Container", Category: "Packaging", Unit: "pcs" },
-];
-const MOCK_DISHES = [
-    { DishName: "Chicken Stew" },
-    { DishName: "Veg Stew" },
-];
-const MOCK_PRODUCTION_PLAN = [
-    { DishName: "Chicken Stew", Yelahanka: 50, Thanisandra: 40 },
-    { DishName: "Veg Stew", Yelahanka: 75, Thanisandra: 80 },
-];
-
-// --- APP ROUTING & STATE ---
+// Global variables to hold our data
+let ALL_ITEMS = [];
+let ALL_DISHES = [];
+let PRODUCTION_PLAN = [];
 let currentOutlet = "";
 
-// Simple router to check if we are on the HQ page or Chef page
-const isHqPage = window.location.pathname.includes('/hq');
+// --- GOOGLE SHEETS API HELPER ---
+// This function fetches all the initial data from our Google Sheet.
+async function getSheetData() {
+    // This is a special URL that Vercel creates for our backend function.
+    const response = await fetch('/api/getData');
+    if (!response.ok) {
+        appContainer.innerHTML = `<div class="text-center p-10 bg-red-100 border border-red-400 text-red-700 rounded">
+            <p class="font-bold">Error loading data from Google Sheet.</p>
+            <p>Please check Vercel environment variables and Sheet permissions.</p>
+        </div>`;
+        throw new Error('Failed to fetch sheet data');
+    }
+    const data = await response.json();
+    ALL_ITEMS = data.items;
+    ALL_DISHES = data.dishes;
+    PRODUCTION_PLAN = data.productionPlan;
+}
 
-// --- HTML TEMPLATES (Functions that create the HTML for our pages) ---
+// This function sends data (orders or inventory) to our Google Sheet.
+async function postSheetData(sheetName, data) {
+    await fetch('/api/postData', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheetName, data }),
+    });
+}
 
-// The main screen selector for chefs
+
+// --- HTML TEMPLATES ---
+
 function renderOutletSelector() {
     return `
         <div class="mb-4">
@@ -40,7 +53,6 @@ function renderOutletSelector() {
             </select>
         </div>
         <div id="outlet-content" class="hidden">
-            <!-- Tabs will go here -->
             <div class="border-b border-gray-200 mb-4">
                 <nav class="flex -mb-px" id="chef-tabs">
                     <button data-tab="order" class="w-1/3 py-4 px-1 text-center border-b-2 font-medium text-lg border-indigo-500 text-indigo-600">Order</button>
@@ -53,19 +65,18 @@ function renderOutletSelector() {
     `;
 }
 
-// Creates the order form
 function renderOrderForm(items) {
-    const categories = [...new Set(items.map(item => item.Category))];
+    const categories = [...new Set(items.map(item => item.Category))].sort();
     return `
         <h2 class="text-xl font-bold mb-4">Place Your Order</h2>
         <form id="order-form">
             ${categories.map(category => `
-                <div class="category-header">${category.toUpperCase()}</div>
-                <div class="space-y-4 p-4">
+                <div class="category-header">${category ? category.toUpperCase() : 'UNCATEGORIZED'}</div>
+                <div class="space-y-4 p-4 bg-white rounded-lg shadow-sm mb-4">
                     ${items.filter(i => i.Category === category).map(item => `
                         <div class="flex justify-between items-center">
                             <label class="text-gray-700">${item.ItemName} (${item.Unit})</label>
-                            <input type="number" name="${item.ItemName}" min="0" class="border rounded px-2 py-1" placeholder="0">
+                            <input type="number" data-item="${item.ItemName}" data-unit="${item.Unit}" min="0" class="border rounded px-2 py-1" placeholder="0">
                         </div>
                     `).join('')}
                 </div>
@@ -75,19 +86,18 @@ function renderOrderForm(items) {
     `;
 }
 
-// Creates the inventory form
 function renderInventoryForm(items) {
-     const categories = [...new Set(items.map(item => item.Category))];
+    const categories = [...new Set(items.map(item => item.Category))].sort();
     return `
         <h2 class="text-xl font-bold mb-4">Update Closing Inventory</h2>
         <form id="inventory-form">
             ${categories.map(category => `
-                <div class="category-header">${category.toUpperCase()}</div>
-                <div class="space-y-4 p-4">
+                <div class="category-header">${category ? category.toUpperCase() : 'UNCATEGORIZED'}</div>
+                <div class="space-y-4 p-4 bg-white rounded-lg shadow-sm mb-4">
                     ${items.filter(i => i.Category === category).map(item => `
                         <div class="flex justify-between items-center">
                             <label class="text-gray-700">${item.ItemName} (${item.Unit})</label>
-                            <input type="number" name="${item.ItemName}" min="0" step="0.1" class="border rounded px-2 py-1" placeholder="0.0">
+                            <input type="number" data-item="${item.ItemName}" min="0" step="0.1" class="border rounded px-2 py-1" placeholder="0.0">
                         </div>
                     `).join('')}
                 </div>
@@ -97,29 +107,90 @@ function renderInventoryForm(items) {
     `;
 }
 
-// Creates the production plan view for chefs
 function renderProductionPlan(plan, outlet) {
+    const dishesWithTargets = ALL_DISHES.map(dish => {
+        const planEntry = plan.find(p => p.DishName === dish.DishName);
+        return {
+            DishName: dish.DishName,
+            Target: planEntry ? (planEntry[outlet] || 0) : 0
+        };
+    });
+
     return `
          <h2 class="text-xl font-bold mb-4">Today's Production Plan</h2>
          <div class="space-y-3">
-            ${plan.map(dish => `
+            ${dishesWithTargets.map(dish => `
                 <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
                     <span class="text-gray-800 font-medium">${dish.DishName}</span>
-                    <span class="dish-target text-blue-600">${dish[outlet] || 0}</span>
+                    <span class="dish-target text-blue-600">${dish.Target}</span>
                 </div>
             `).join('')}
          </div>
     `;
 }
 
-// Main function to start the chef's view
+function attachFormListeners(tabContent) {
+    const orderForm = tabContent.querySelector('#order-form');
+    if (orderForm) {
+        orderForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(orderForm);
+            const orderData = [];
+            const timestamp = new Date().toISOString();
+
+            for (let input of orderForm.querySelectorAll('input[type="number"]')) {
+                if (input.value && parseFloat(input.value) > 0) {
+                    orderData.push([
+                        timestamp,
+                        currentOutlet,
+                        input.dataset.item,
+                        parseFloat(input.value)
+                    ]);
+                }
+            }
+
+            if (orderData.length > 0) {
+                await postSheetData('Order_Log', orderData);
+                alert('Order submitted successfully!');
+                orderForm.reset();
+            } else {
+                alert('Please enter a quantity for at least one item.');
+            }
+        });
+    }
+
+    const inventoryForm = tabContent.querySelector('#inventory-form');
+    if (inventoryForm) {
+        inventoryForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const inventoryData = [];
+            const timestamp = new Date().toISOString();
+
+             for (let input of inventoryForm.querySelectorAll('input[type="number"]')) {
+                if (input.value && input.value !== '') {
+                    inventoryData.push([
+                        timestamp,
+                        currentOutlet,
+                        input.dataset.item,
+                        parseFloat(input.value)
+                    ]);
+                }
+            }
+
+            if (inventoryData.length > 0) {
+                await postSheetData('Inventory_Log', inventoryData);
+                alert('Inventory saved successfully!');
+                inventoryForm.reset();
+            } else {
+                alert('Please enter the stock for at least one item.');
+            }
+        });
+    }
+}
+
+
 async function initChefView() {
     appContainer.innerHTML = renderOutletSelector();
-    
-    // In a real app, you would fetch this from your Google Sheet API
-    const allItems = MOCK_ITEMS; 
-    const allDishes = MOCK_DISHES;
-    const productionPlan = MOCK_PRODUCTION_PLAN;
 
     const outletSelector = document.getElementById('outlet-select');
     const outletContent = document.getElementById('outlet-content');
@@ -130,7 +201,6 @@ async function initChefView() {
         currentOutlet = e.target.value;
         if (currentOutlet) {
             outletContent.classList.remove('hidden');
-            // Default to order tab
             tabs.querySelector('button[data-tab="order"]').click();
         } else {
             outletContent.classList.add('hidden');
@@ -139,7 +209,6 @@ async function initChefView() {
 
     tabs.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
-            // Update tab visual state
             tabs.querySelectorAll('button').forEach(b => {
                 b.classList.remove('border-indigo-500', 'text-indigo-600');
                 b.classList.add('border-transparent', 'text-gray-500');
@@ -147,31 +216,29 @@ async function initChefView() {
             e.target.classList.add('border-indigo-500', 'text-indigo-600');
             e.target.classList.remove('border-transparent', 'text-gray-500');
 
-            // Load tab content
             const tabName = e.target.dataset.tab;
             if (tabName === 'order') {
-                tabContent.innerHTML = renderOrderForm(allItems);
-                // Add form submission logic here
+                tabContent.innerHTML = renderOrderForm(ALL_ITEMS);
             } else if (tabName === 'inventory') {
-                tabContent.innerHTML = renderInventoryForm(allItems);
-                // Add form submission logic here
+                tabContent.innerHTML = renderInventoryForm(ALL_ITEMS);
             } else if (tabName === 'production') {
-                tabContent.innerHTML = renderProductionPlan(productionPlan, currentOutlet);
+                tabContent.innerHTML = renderProductionPlan(PRODUCTION_PLAN, currentOutlet);
             }
+            attachFormListeners(tabContent);
         }
     });
 }
 
-// Main function to start the HQ view
-async function initHqView() {
-    appContainer.innerHTML = `<h1 class="text-2xl font-bold text-center">HQ Dashboard (Coming Soon)</h1>`;
-    // We will build the HQ logic after connecting to Google Sheets
+// --- MAIN APP INITIALIZATION ---
+async function main() {
+    try {
+        await getSheetData();
+        // We only support the chef view for now. HQ view is directly in Google Sheets.
+        initChefView();
+    } catch (error) {
+        console.error("Could not initialize the app:", error);
+        // Error message is already shown by getSheetData()
+    }
 }
 
-
-// --- INITIALIZE THE APP ---
-if (isHqPage) {
-    initHqView();
-} else {
-    initChefView();
-}
+main();
