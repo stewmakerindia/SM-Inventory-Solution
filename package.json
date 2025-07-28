@@ -1,0 +1,14 @@
+{
+  "name": "kitchen-sync-app",
+  "version": "1.0.0",
+  "description": "A simple inventory management app for cloud kitchens.",
+  "main": "main.js",
+  "scripts": {
+    "start": "vite"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "vite": "^4.0.0"
+  }
+}
