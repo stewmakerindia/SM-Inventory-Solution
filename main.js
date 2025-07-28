@@ -2,7 +2,6 @@
 
 // --- CONFIGURATION ---
 const OUTLETS = ["Yelahanka", "Thanisandra", "Kammanahalli", "Indiranagar"];
-const SPREADSHEET_ID = import.meta.env.VITE_GOOGLE_SHEET_ID;
 
 // The main container for our app
 const appContainer = document.getElementById("app");
@@ -11,12 +10,12 @@ const appContainer = document.getElementById("app");
 let ALL_ITEMS = [];
 let ALL_DISHES = [];
 let PRODUCTION_PLAN = [];
+let CATEGORY_ORDER = []; // *** NEW: A place to store the category order ***
 let currentOutlet = "";
 
 // --- GOOGLE SHEETS API HELPER ---
 // This function fetches all the initial data from our Google Sheet.
 async function getSheetData() {
-    // This is a special URL that Vercel creates for our backend function.
     const response = await fetch('/api/getData');
     if (!response.ok) {
         appContainer.innerHTML = `<div class="text-center p-10 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -29,6 +28,7 @@ async function getSheetData() {
     ALL_ITEMS = data.items;
     ALL_DISHES = data.dishes;
     PRODUCTION_PLAN = data.productionPlan;
+    CATEGORY_ORDER = data.categoryOrder; // *** NEW: Storing the order ***
 }
 
 // This function sends data (orders or inventory) to our Google Sheet.
@@ -38,6 +38,24 @@ async function postSheetData(sheetName, data) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sheetName, data }),
     });
+}
+
+// *** NEW: A helper function to sort the categories based on your sheet ***
+function getSortedCategories(items) {
+    const allCategoriesInItems = [...new Set(items.map(item => item.Category))];
+    
+    // If the Category_Order sheet exists and has items, use it for sorting
+    if (CATEGORY_ORDER.length > 0) {
+        // Filter the master order list to only include categories that actually exist in Master_Items
+        const ordered = CATEGORY_ORDER.filter(cat => allCategoriesInItems.includes(cat));
+        // Find any categories that are in Master_Items but not in the order sheet
+        const unordered = allCategoriesInItems.filter(cat => !CATEGORY_ORDER.includes(cat));
+        // Return the ordered ones first, then any unordered ones (sorted alphabetically)
+        return [...ordered, ...unordered.sort()];
+    }
+    
+    // Fallback to simple alphabetical sorting if Category_Order is empty
+    return allCategoriesInItems.sort();
 }
 
 
@@ -66,7 +84,7 @@ function renderOutletSelector() {
 }
 
 function renderOrderForm(items) {
-    const categories = [...new Set(items.map(item => item.Category))].sort();
+    const categories = getSortedCategories(items); // *** CHANGED: Using our new sorting function ***
     return `
         <h2 class="text-xl font-bold mb-4">Place Your Order</h2>
         <form id="order-form">
@@ -87,7 +105,7 @@ function renderOrderForm(items) {
 }
 
 function renderInventoryForm(items) {
-    const categories = [...new Set(items.map(item => item.Category))].sort();
+    const categories = getSortedCategories(items); // *** CHANGED: Using our new sorting function ***
     return `
         <h2 class="text-xl font-bold mb-4">Update Closing Inventory</h2>
         <form id="inventory-form">
@@ -231,6 +249,8 @@ async function initChefView() {
 
 // --- MAIN APP INITIALIZATION ---
 async function main() {
+    // Display a loading message immediately
+    appContainer.innerHTML = `<div class="text-center p-10"><p class="text-lg font-semibold">Loading KitchenSync...</p><p class="text-gray-500">Fetching latest data from Google Sheets.</p></div>`;
     try {
         await getSheetData();
         // We only support the chef view for now. HQ view is directly in Google Sheets.
