@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KitchenSync</title>
+    <!-- This is a link to a library that makes things look nice -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Simple style for better readability on mobile */
+        body { font-family: sans-serif; }
+        .category-header { background-color: #f3f4f6; font-weight: bold; padding: 8px; margin-top: 16px; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb;}
+        input[type="number"] { width: 80px; text-align: center; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; }
+        .dish-target { font-size: 1.5rem; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="max-w-xl mx-auto p-4">
+        <!-- App content will be loaded here by our script -->
+        <div class="text-center p-10">
+            <p class="text-lg font-semibold">Loading KitchenSync...</p>
+            <p class="text-gray-500">Please wait a moment.</p>
+        </div>
+    </div>
+
+    <!-- This is the 'brain' of our app -->
+    <script type="module" src="/main.js"></script>
+</body>
+</html>
