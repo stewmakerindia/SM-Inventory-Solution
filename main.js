@@ -2,7 +2,7 @@
 // --- BRANDING CONFIGURATION ---
 // =================================================================
 const BRAND_COLOR = "#E65100";
-const LOGO_URL = "https://i.postimg.cc/Jh3f4Z8K/stewmaker-logo.png";
+const LOGO_URL = "https://i.postimg.cc/Fsv6HcTP/Logo-variations-png-03.png";
 // =================================================================
 
 // --- APP CONFIGURATION ---
