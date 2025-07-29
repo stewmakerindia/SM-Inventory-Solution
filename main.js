@@ -21,7 +21,7 @@ async function getSheetData() {
     }
     const data = await response.json();
     ALL_ITEMS = data.items; ALL_DISHES = data.dishes; PRODUCTION_PLAN = data.productionPlan; CATEGORY_ORDER = data.categoryOrder;
-    DISH_CATEGORY_ORDER = data.dishCategoryOrder; // *** NEW: Storing the dish order ***
+    DISH_CATEGORY_ORDER = data.dishCategoryOrder;
 }
 async function postSheetData(sheetName, data) {
     await fetch('/api/postData', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sheetName, data }) });
@@ -54,7 +54,6 @@ function renderInventoryForm(items) {
     return `<h2 class="text-xl font-bold mb-4">Update Closing Inventory</h2><form id="inventory-form">${categories.map(category => `<div class="category-header">${category ? category.toUpperCase() : 'UNCATEGORIZED'}</div><div class="space-y-4 p-4 bg-white rounded-lg shadow-sm mb-4">${items.filter(i => i.Category === category).map(item => `<div class="flex justify-between items-center"><label class="text-gray-700">${item.ItemName} (${item.Unit})</label><input type="number" data-item="${item.ItemName}" min="0" step="0.1" class="border rounded px-2 py-1" placeholder="0.0"></div>`).join('')}</div>`).join('')}<button type="submit" class="w-full text-white font-bold py-3 px-4 rounded-lg mt-6" style="background-color: ${BRAND_COLOR};">SAVE & SEND TO HQ</button></form>`;
 }
 
-// *** NEW: The Production Plan is now categorized! ***
 function renderProductionPlan(plan, outlet) {
     const categories = getSortedCategories(ALL_DISHES, DISH_CATEGORY_ORDER);
     return `
@@ -75,13 +74,7 @@ function renderProductionPlan(plan, outlet) {
     `;
 }
 
-// --- EVENT LISTENERS and INITIALIZATION ---
-function attachFormListeners(tabContent) { /* ... (no changes here) ... */ }
-async function initChefView() { /* ... (no changes here) ... */ }
-async function main() { /* ... (no changes here) ... */ }
-
-// Re-pasting the functions that had no changes to make it a single copy-paste action for you.
-attachFormListeners = function(tabContent) {
+function attachFormListeners(tabContent) {
     const orderForm = tabContent.querySelector('#order-form');
     if (orderForm) {
         orderForm.addEventListener('submit', async (e) => {
@@ -100,7 +93,7 @@ attachFormListeners = function(tabContent) {
     }
 }
 
-initChefView = async function() {
+function initChefView() {
     appContainer.innerHTML = renderOutletSelector();
     const outletSelector = document.getElementById('outlet-select'); const outletContent = document.getElementById('outlet-content'); const tabContent = document.getElementById('tab-content'); const tabs = document.getElementById('chef-tabs');
     outletSelector.addEventListener('change', (e) => {
@@ -115,13 +108,16 @@ initChefView = async function() {
             });
             e.target.style.backgroundColor = BRAND_COLOR; e.target.style.color = 'white'; e.target.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
             const tabName = e.target.dataset.tab;
-            if (tabName === 'order') { tabContent.innerHTML = renderOrderForm(ALL_ITEMS); } else if (tabName === 'inventory') { tabContent.innerHTML = renderInventoryForm(ALL_ITEMS); } else if (tabName === 'production') { tabContent.innerHTML = renderProductionPlan(PRODUCTION_PLAN, outlet); }
+            if (tabName === 'order') { tabContent.innerHTML = renderOrderForm(ALL_ITEMS); } 
+            else if (tabName === 'inventory') { tabContent.innerHTML = renderInventoryForm(ALL_ITEMS); } 
+            // *** THIS IS THE LINE I FIXED ***
+            else if (tabName === 'production') { tabContent.innerHTML = renderProductionPlan(PRODUCTION_PLAN, currentOutlet); } 
             attachFormListeners(tabContent);
         }
     });
 }
 
-main = async function() {
+async function main() {
     appContainer.innerHTML = `<div class="text-center p-10"><p class="text-lg font-semibold">Loading KitchenSync...</p><p class="text-gray-500">Fetching latest data from Google Sheets.</p></div>`;
     try {
         await getSheetData(); initChefView();
