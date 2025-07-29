@@ -95,13 +95,21 @@ function attachFormListeners(tabContent) {
             }
 
             if (dataToSave.length > 0) {
+                // Save the data first. This is an async operation.
                 await postSheetData(logSheet, dataToSave);
-                alert(`${formType === 'order' ? 'Order' : 'Inventory'} saved successfully!`);
-                form.reset();
+                
+                // Now, open WhatsApp if it's an order form.
                 if (formType === 'order') {
                     const message = generateWhatsAppMessage(orderedItemsForWhatsApp);
                     window.open(`https://wa.me/?text=${message}`, '_blank');
+                } else {
+                    // For inventory, we can show a confirmation alert.
+                    alert('Inventory saved successfully!');
                 }
+
+                // Reset the form after all actions are done.
+                form.reset();
+
             } else {
                 alert('Please enter a value for at least one item.');
             }
