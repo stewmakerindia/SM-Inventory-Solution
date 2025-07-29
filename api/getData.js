@@ -1,6 +1,5 @@
 import { google } from 'googleapis';
 
-// This is a serverless function. It runs securely on Vercel's servers.
 export default async function handler(req, res) {
     try {
         const auth = new google.auth.GoogleAuth({
@@ -14,16 +13,15 @@ export default async function handler(req, res) {
         const sheets = google.sheets({ version: 'v4', auth });
         const SPREADSHEET_ID = process.env.VITE_GOOGLE_SHEET_ID;
 
-        // Fetch all data in parallel for speed
         const [itemsRes, dishesRes, productionPlanRes, categoryOrderRes, dishCategoryOrderRes] = await Promise.all([
+            // *** CHANGED: Reading one more column (D) for SuperCategory ***
             sheets.spreadsheets.values.get({
                 spreadsheetId: SPREADSHEET_ID,
-                range: 'Master_Items!A2:C',
+                range: 'Master_Items!A2:D', 
             }),
-            // *** CHANGED: Reading two columns from Master_Dishes ***
             sheets.spreadsheets.values.get({
                 spreadsheetId: SPREADSHEET_ID,
-                range: 'Master_Dishes!A2:B', 
+                range: 'Master_Dishes!A2:B',
             }),
             sheets.spreadsheets.values.get({
                 spreadsheetId: SPREADSHEET_ID,
@@ -33,24 +31,24 @@ export default async function handler(req, res) {
                 spreadsheetId: SPREADSHEET_ID,
                 range: 'Category_Order!A2:A',
             }),
-            // *** NEW: Fetching the dish category order ***
             sheets.spreadsheets.values.get({
                 spreadsheetId: SPREADSHEET_ID,
                 range: 'Dish_Category_Order!A2:A',
             }),
         ]);
         
-        // Process Items
+        // *** CHANGED: Process Items with the new SuperCategory ***
         const items = itemsRes.data.values ? itemsRes.data.values.map(row => ({
-            ItemName: row[0], Category: row[1], Unit: row[2],
+            ItemName: row[0],
+            Category: row[1],
+            Unit: row[2],
+            SuperCategory: row[3], // The new field
         })) : [];
 
-        // *** CHANGED: Process Dishes with categories ***
         const dishes = dishesRes.data.values ? dishesRes.data.values.map(row => ({
             DishName: row[0], Category: row[1],
         })) : [];
 
-        // Process Production Plan
         const planHeaders = productionPlanRes.data.values ? productionPlanRes.data.values[0] : [];
         const planRows = productionPlanRes.data.values ? productionPlanRes.data.values.slice(1) : [];
         const productionPlan = planRows.map(row => {
@@ -59,20 +57,15 @@ export default async function handler(req, res) {
             return obj;
         });
 
-        // Process category orders
         const categoryOrder = categoryOrderRes.data.values ? categoryOrderRes.data.values.flat() : [];
         const dishCategoryOrder = dishCategoryOrderRes.data.values ? dishCategoryOrderRes.data.values.flat() : [];
 
         res.status(200).json({
-            items,
-            dishes,
-            productionPlan,
-            categoryOrder,
-            dishCategoryOrder, // *** NEW: Sending the dish order to the app ***
+            items, dishes, productionPlan, categoryOrder, dishCategoryOrder,
         });
 
     } catch (error) {
-        console.error(error);
+        console.error('Error in getData:', error);
         res.status(500).json({ error: 'Failed to fetch data from Google Sheet.', details: error.message });
     }
 }
