@@ -3,10 +3,10 @@
 // =================================================================
 
 // 1. Enter your brand's main color (hex code).
-const BRAND_COLOR = "#E65100"; // Your brand's orange color
+const BRAND_COLOR = "#293373"; // Your brand's orange color
 
 // 2. Paste the direct link to your logo image.
-const LOGO_URL = "https://i.postimg.cc/Jh3f4Z8K/stewmaker-logo.png"; 
+const LOGO_URL = "https://i.postimg.cc/Fsv6HcTP/Logo-variations-png-03.png"; 
 
 // =================================================================
 // --- END OF CONFIGURATION --- (No need to edit below this line)
