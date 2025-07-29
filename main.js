@@ -3,13 +3,10 @@
 // =================================================================
 
 // 1. Enter your brand's main color (hex code).
-// Example: const BRAND_COLOR = "#293373"; // A fuchsia color
-const BRAND_COLOR = "#293373"; // Default: A nice indigo
+const BRAND_COLOR = "#E65100"; // Your brand's orange color
 
-// 2. Paste the direct link to your logo image from postimages.org.
-//    Leave it blank like "" for no logo.
-// Example: const LOGO_URL = "https://i.postimg.cc/your-logo.png";
-const LOGO_URL = "https://i.postimg.cc/Fsv6HcTP/Logo-variations-png-03.png"; 
+// 2. Paste the direct link to your logo image.
+const LOGO_URL = "https://i.postimg.cc/Jh3f4Z8K/stewmaker-logo.png"; 
 
 // =================================================================
 // --- END OF CONFIGURATION --- (No need to edit below this line)
@@ -60,12 +57,13 @@ function renderOutletSelector() {
             </select>
         </div>
         <div id="outlet-content" class="hidden">
-            <div class="border-b border-gray-200 mb-4">
-                <nav class="flex -mb-px" id="chef-tabs">
-                    <button data-tab="order" class="w-1/3 py-4 px-1 text-center border-b-2 font-medium text-lg" style="border-color: ${BRAND_COLOR}; color: ${BRAND_COLOR};">Order</button>
-                    <button data-tab="inventory" class="w-1/3 py-4 px-1 text-center border-b-2 font-medium text-lg border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Inventory</button>
-                    <button data-tab="production" class="w-1/3 py-4 px-1 text-center border-b-2 font-medium text-lg border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Production</button>
-                </nav>
+            <div class="mb-4">
+                <!-- *** NEW: Pill-style tab container *** -->
+                <div id="chef-tabs" class="bg-gray-200 p-1 rounded-full flex w-full">
+                    <button data-tab="order" class="flex-1 text-center font-medium py-2 px-4 rounded-full transition-all duration-300">Order</button>
+                    <button data-tab="inventory" class="flex-1 text-center font-medium py-2 px-4 rounded-full transition-all duration-300">Inventory</button>
+                    <button data-tab="production" class="flex-1 text-center font-medium py-2 px-4 rounded-full transition-all duration-300">Production</button>
+                </div>
             </div>
             <div id="tab-content"></div>
         </div>
@@ -113,12 +111,23 @@ async function initChefView() {
         currentOutlet = e.target.value;
         if (currentOutlet) { outletContent.classList.remove('hidden'); tabs.querySelector('button[data-tab="order"]').click(); } else { outletContent.classList.add('hidden'); }
     });
+    
+    // *** NEW: Updated click handler for the pill-style tabs ***
     tabs.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
+            // Reset all buttons to the 'inactive' state
             tabs.querySelectorAll('button').forEach(b => {
-                b.style.borderColor = 'transparent'; b.style.color = '#6B7280'; // Reset to gray
+                b.style.backgroundColor = 'transparent';
+                b.style.color = '#6B7280'; // A standard tailwind gray-500
+                b.style.boxShadow = 'none';
             });
-            e.target.style.borderColor = BRAND_COLOR; e.target.style.color = BRAND_COLOR;
+
+            // Set the clicked button to the 'active' state
+            e.target.style.backgroundColor = BRAND_COLOR;
+            e.target.style.color = 'white';
+            e.target.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
+
+            // Load the content for the clicked tab
             const tabName = e.target.dataset.tab;
             if (tabName === 'order') { tabContent.innerHTML = renderOrderForm(ALL_ITEMS); } else if (tabName === 'inventory') { tabContent.innerHTML = renderInventoryForm(ALL_ITEMS); } else if (tabName === 'production') { tabContent.innerHTML = renderProductionPlan(PRODUCTION_PLAN, currentOutlet); }
             attachFormListeners(tabContent);
