@@ -33,7 +33,6 @@ export default async function handler(req, res) {
             .map(row => ({
                 date: new Date(row[0]),
                 outlet: row[1],
-                // *** CHANGED: We now correctly read OrderID as a number ***
                 orderId: parseInt(row[2]) || 0,
                 amount: parseFloat(row[3]) || 0,
             }))
@@ -45,34 +44,34 @@ export default async function handler(req, res) {
         const yesterday = new Date(baseDate);
         yesterday.setDate(baseDate.getDate() - 1);
         const yesterdaySales = allSales.filter(sale => getStartOfDay(sale.date).getTime() === yesterday.getTime());
-        // *** CHANGED: Now SUMMING OrderID instead of counting rows ***
         const yesterdayOrders = yesterdaySales.reduce((sum, sale) => sum + sale.orderId, 0);
         const yesterdayTotal = yesterdaySales.reduce((sum, sale) => sum + sale.amount, 0);
 
-        // 2. This Week's Sales (Monday - Selected Date)
+        // 2. This Week's Sales (Monday - Day Before Selected Date)
         const dayOfWeek = baseDate.getDay();
         const startOfWeek = new Date(baseDate);
         startOfWeek.setDate(baseDate.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
 
-        // *** CHANGED: The filter now correctly stops at the selected date for "Week-to-Date" ***
+        // *** CORRECTED: Now filters for dates STRICTLY LESS THAN the selected date ***
         const thisWeekSales = allSales.filter(sale => {
             const saleDate = getStartOfDay(sale.date);
-            return saleDate >= startOfWeek && saleDate <= baseDate;
+            return saleDate >= startOfWeek && saleDate < baseDate;
         });
-        // *** CHANGED: Now SUMMING OrderID instead of counting rows ***
         const thisWeekOrders = thisWeekSales.reduce((sum, sale) => sum + sale.orderId, 0);
         const thisWeekTotal = thisWeekSales.reduce((sum, sale) => sum + sale.amount, 0);
 
-        // 3. This Month's Sales (Month-to-Date)
+        // 3. This Month's Sales (Month-to-Date, excluding selected date)
         const startOfMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
-        const thisMonthSales = allSales.filter(sale => getStartOfDay(sale.date) >= startOfMonth && getStartOfDay(sale.date) <= baseDate);
-        // *** CHANGED: Now SUMMING OrderID instead of counting rows ***
+        const thisMonthSales = allSales.filter(sale => getStartOfDay(sale.date) >= startOfMonth && getStartOfDay(sale.date) < baseDate);
         const thisMonthOrders = thisMonthSales.reduce((sum, sale) => sum + sale.orderId, 0);
         const thisMonthTotal = thisMonthSales.reduce((sum, sale) => sum + sale.amount, 0);
         
+        const weekEndDate = new Date(baseDate);
+        weekEndDate.setDate(baseDate.getDate() - 1);
+
         res.status(200).json({
             yesterday: { orders: yesterdayOrders, amount: yesterdayTotal, date: yesterday.toLocaleDateString('en-GB') },
-            thisWeek: { orders: thisWeekOrders, amount: thisWeekTotal, start: startOfWeek.toLocaleDateString('en-GB'), end: baseDate.toLocaleDateString('en-GB') },
+            thisWeek: { orders: thisWeekOrders, amount: thisWeekTotal, start: startOfWeek.toLocaleDateString('en-GB'), end: weekEndDate.toLocaleDateString('en-GB') },
             thisMonth: { orders: thisMonthOrders, amount: thisMonthTotal, month: baseDate.toLocaleString('default', { month: 'long' }) },
         });
 
