@@ -1,7 +1,7 @@
 // =================================================================
 // --- BRANDING CONFIGURATION ---
 // =================================================================
-const BRAND_COLOR = "#E65100";
+const BRAND_COLOR = "#bd202f";
 const LOGO_URL = "https://i.postimg.cc/Fsv6HcTP/Logo-variations-png-03.png";
 // =================================================================
 // --- END OF CONFIGURATION ---
